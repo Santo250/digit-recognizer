@@ -1,18 +1,21 @@
-from flask import Flask,render_template,request
-import numpy as np
+import streamlit as st
 import cv2
-import base64
-import sys
-import json
+import numpy as np
 
+st.title("Digit Recognizer")
 
-# Define App
-app = Flask(__name__,template_folder="templates")
+# File Uploader (replaces request.files)
+uploaded_file = st.file_uploader("Choose an image...", type=["png", "jpg"])
 
-# The home page is routed to index.html inside
-@app.route('/')
-def index():
-   return render_template('index.html')
+if uploaded_file is not None:
+    # Display image
+    st.image(uploaded_file, caption='Uploaded Image')
+    
+    # Process image (your CV logic goes here)
+    # file_bytes = np.asarray(bytearray(uploaded_file.read()), dtype=np.uint8)
+    # img = cv2.imdecode(file_bytes, 1)
+    
+    st.success("Image processed successfully!")
 
 # Load Digit Recogniztion model
 net = cv2.dnn.readNetFromONNX('model.onnx')
