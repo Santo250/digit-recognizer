@@ -1,10 +1,10 @@
 import streamlit as st
 import cv2
 import numpy as np
-import base64
-import json
+from streamlit_drawable_canvas import st_canvas
 
-st.title("Digit Recognizer")
+st.title("✏️ Digit Recognizer")
+st.write("Draw a digit (0-9) in the canvas below and the model will predict it!")
 
 # Load the ONNX model
 @st.cache_resource
@@ -17,8 +17,9 @@ def softmax(x):
     return np.exp(x) / np.sum(np.exp(x), axis=0)
 
 def predict_digit(image):
-    # Resize and normalize
+    # Resize to 28x28
     img = cv2.resize(image, (28, 28))
+    # Create blob
     blob = cv2.dnn.blobFromImage(img, 1/255, (28, 28))
     net.setInput(blob)
     out = net.forward()
@@ -27,18 +28,45 @@ def predict_digit(image):
     confidence = out[class_id]
     return class_id, confidence
 
-# File uploader
-uploaded_file = st.file_uploader("Choose an image...", type=["png", "jpg", "jpeg"])
+# Create drawing canvas
+canvas_result = st_canvas(
+    fill_color="black",
+    stroke_width=20,
+    stroke_color="white",
+    background_color="black",
+    width=280,
+    height=280,
+    drawing_mode="freedraw",
+    key="canvas",
+)
 
-if uploaded_file is not None:
-    st.image(uploaded_file, caption='Uploaded Image', use_column_width=True)
-    
-    # Convert to OpenCV format
-    file_bytes = np.asarray(bytearray(uploaded_file.read()), dtype=np.uint8)
-    img = cv2.imdecode(file_bytes, cv2.IMREAD_GRAYSCALE)
-    
-    # Make prediction
-    class_id, confidence = predict_digit(img)
-    
-    st.success(f"Predicted Digit: {class_id}")
-    st.info(f"Confidence: {confidence:.2%}")
+# Predict button
+if st.button("🔮 Predict Digit"):
+    if canvas_result.image_data is not None:
+        # Get the image from canvas
+        img = canvas_result.image_data.astype(np.uint8)
+        
+        # Convert RGBA to grayscale
+        if img.shape[2] == 4:
+            gray = cv2.cvtColor(img, cv2.COLOR_RGBA2GRAY)
+        else:
+            gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+        
+        # Invert colors (model expects white digit on black background)
+        gray = 255 - gray
+        
+        # Make prediction
+        class_id, confidence = predict_digit(gray)
+        
+        # Display results
+        st.success(f"### Predicted Digit: {class_id}")
+        st.info(f"### Confidence: {confidence:.2%}")
+        
+        # Show processed image
+        st.image(gray, caption="Processed Image (28x28)", width=200)
+    else:
+        st.warning("Please draw a digit first!")
+
+# Clear canvas button
+if st.button("🗑️ Clear Canvas"):
+    st.rerun()
